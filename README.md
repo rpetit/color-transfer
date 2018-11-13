@@ -1,2 +1,1 @@
-# color_transfer
-Color transfer by optimal transport
+# Color transfer by optimal transport
