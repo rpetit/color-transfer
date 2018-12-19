@@ -27,11 +27,13 @@ class Image:
                 cluster_idx = segments[i, j]
 
                 if clusters[cluster_idx] == {}:
-                    clusters[cluster_idx]['spatial_mean'] = np.array([i, j], dtype='float')
+                    clusters[cluster_idx]['spatial_mean'] = np.array([i / self.array.shape[0],
+                                                                      j / self.array.shape[1]])
                     clusters[cluster_idx]['color_mean'] = self.array[i, j]
                     clusters[cluster_idx]['num_pixels'] = 1
                 else:
-                    clusters[cluster_idx]['spatial_mean'] += np.array([i, j])
+                    clusters[cluster_idx]['spatial_mean'] += np.array([i / self.array.shape[0],
+                                                                       j / self.array.shape[1]])
                     clusters[cluster_idx]['color_mean'] += self.array[i, j]
                     clusters[cluster_idx]['num_pixels'] += 1
 
@@ -102,12 +104,12 @@ def coupling_matrix_projection(coupling_matrix, hist):
     return projection
 
 
-def compute_transport_map(original_image, target_image, num_iter=10, gamma=0.1):
+def compute_transport_map(original_image, target_image, num_iter=10, gamma=0.1, num_segments=300):
     if not original_image.is_quantized:
-        original_image.quantize()
+        original_image.quantize(num_segments)
 
     if not target_image.is_quantized:
-        target_image.quantize()
+        target_image.quantize(num_segments)
 
     cost_matrix = np.array([[np.linalg.norm(original_image.features[i, 2:] - target_image.features[j, 2:]) ** 2
                              for j in range(target_image.features.shape[0])]
@@ -126,3 +128,23 @@ def compute_transport_map(original_image, target_image, num_iter=10, gamma=0.1):
     transport_map = np.diag(1 / original_image.hist) @ coupling_matrix @ target_image.features[:, 2:]
 
     return transport_map
+
+
+def color_transfer(original_image, target_image, num_iter=10, gamma=0.1, num_segments=300, sigma=0.1):
+    transport_map = compute_transport_map(original_image, target_image, num_iter, gamma, num_segments)
+
+    synthesized_array = np.zeros_like(original_image.array)
+
+    for i in range(original_image.array.shape[0]):
+        for j in range(original_image.array.shape[1]):
+
+            point_feature = np.hstack([np.array([i / original_image.array.shape[0], j / original_image.array.shape[1]]),
+                                       original_image.array[i, j]])
+
+            clusters_weight = np.exp(- np.linalg.norm(original_image.features - point_feature[np.newaxis, :], axis=1)
+                                     / (2 * sigma ** 2))
+
+            synthesized_array[i, j] = np.sum(clusters_weight[:, np.newaxis] * transport_map, axis=0) / np.sum(
+                clusters_weight)
+
+    return synthesized_array
