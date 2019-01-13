@@ -1,7 +1,3 @@
-# Color transfer by optimal transport
+# Color transfer by optimal transport <br/>
 
-A faire :
-
-* Transport basique (test)
-* Synthèse de l'image finale
-* Extension au transport régularisé / relaxé
+Imaging project (MVA course)
