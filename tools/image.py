@@ -23,7 +23,7 @@ class Image:
         self.is_quantized = False
 
         self.weights = None
-        self.l_weights = None
+        self.G = None
 
     def _compute_clusters(self, num_segments):
         """
@@ -101,7 +101,7 @@ class Image:
     def build_graph(self, num_neighbors):
         """
         build a graph whose vertices are clusters and edges have a weight proportional to their features' similarity
-        these weights are used to regularize the solution of the transport problem
+        this graph is used through the gradient it defines to regularize the transport map
         """
 
         num_features = self.features.shape[0]
@@ -111,12 +111,14 @@ class Image:
                              for j in range(num_features)]
                             for i in range(num_features)])
 
-        # only keep the top num_neighbors neighbors of cluster i (makes computations more efficient)
+        graph_grad = np.zeros((num_features, num_features, num_features))
+
         for i in range(num_features):
-            ranked_neighbors = np.argsort(weights[i])[::-1]
-            weights[i, ranked_neighbors[num_neighbors:]] = 0
+            ranked_neighbors = np.argsort(weights[i])[::-1]  # only keeps
 
-        self.weights = csr_matrix(weights)  # store weights in a sparse matrix
+            for j in range(num_neighbors):  # only keep top neighbors for computational efficiency
+                graph_grad[i, ranked_neighbors[j], i] = weights[i, j]
+                graph_grad[i, ranked_neighbors[j], j] = - weights[i, j]
 
-        self.l_weights = weights * np.array([[self.hist[i] ** 2 + self.hist[j] ** 2 for j in range(num_features)]
-                                             for i in range(num_features)])
+        graph_grad = np.reshape(graph_grad, (num_features ** 2, num_features))
+        self.G = csr_matrix(graph_grad)

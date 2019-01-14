@@ -48,14 +48,13 @@ def coupling_matrix_projection(P, hist):
 def compute_objective(u, v, C, P, rho, mu, alpha):
     X, Y = u.features[:, 2:], v.features[:, 2:]  # color features
     n, m = X.shape[0], Y.shape[0]
+    d = 3  # features' dimension (here 3 color channels)
 
     T = u.Dh @ P @ Y  # transport map
     V = T - X  # transport flow
-    L = u.l_weights @ V - V * (u.l_weights @ np.ones(n))[:, np.newaxis]  # pseudo laplacian
 
     F = 0.5 * np.linalg.norm(np.dot(np.ones(n), P @ np.sqrt(v.Dh))) ** 2 - 0.5  # fidelity term
-    R = 0.5 * np.sum([u.Dh_inv[i] ** 2 * u.weights[i, j] ** 2 * np.linalg.norm(T[i] - T[j]) ** 2  # regularity term
-                      for (i, j) in np.stack(u.weights.nonzero(), axis=1)])
+    R = 0.5 * np.linalg.norm(np.dot(u.Dh_inv, np.reshape(u.G @ V, (n, n, d)))) ** 2  # regularity term
     D = np.sum(P * (np.ones(m) @ np.diag(Y @ Y.T).T - u.Dh_inv @ P @ Y @ Y.T))  # dispersion term
 
     return np.sum(C * P) + rho * F + mu * R + alpha * D
@@ -67,10 +66,13 @@ def compute_objective_grad(u, v, C, P, rho, mu, alpha):
 
     T = u.Dh @ P @ Y  # transport map
     V = T - X  # transport flow
-    L = u.l_weights @ V - V * (u.l_weights @ np.ones(n))[:, np.newaxis]  # pseudo laplacian
 
     grad_F = np.ones((n, n)) @ P @ v.Dh  # fidelity term
-    grad_R = u.Dh @ L @ Y.T  # regularization term
+
+    # regularization term
+    scaling = np.repeat(u.hist ** 2, n)[:, np.newaxis]
+    grad_R = u.Dh @ (u.G.T @ (scaling * (u.G @ V))) @ Y.T
+
     grad_D = np.ones(m) @ np.diag(Y @ Y.T).T - 2 * u.Dh_inv @ P @ Y @ Y.T  # dispersion term
 
     return C + rho * grad_F + mu * grad_R + alpha * grad_D
@@ -81,15 +83,15 @@ def compute_transport_map(u, v, num_iter, tau, rho, mu, alpha, beta, num_neighbo
 
     X, Y = u.features[:, 2:], v.features[:, 2:]  # color features
     n, m = X.shape[0], Y.shape[0]
+    u.build_graph(num_neighbors)
 
     C = np.array([[np.linalg.norm(X[i] - Y[j]) ** 2 for j in range(m)] for i in range(n)])  # cost matrix
-
-    u.build_graph(num_neighbors)
 
     P = ot.emd(u.hist, v.hist, C)  # initialization as the optimal transport matrix
     assert(np.allclose(coupling_matrix_projection(P, u.hist), P))  # assert the projection behaves normally
 
     objective = compute_objective(u, v, C, P, rho, mu, alpha)
+    print(objective)
 
     former_P = P
     former_objective = objective
@@ -106,6 +108,7 @@ def compute_transport_map(u, v, num_iter, tau, rho, mu, alpha, beta, num_neighbo
         P = coupling_matrix_projection(P, u.hist)
 
         objective = compute_objective(u, v, C, P, rho, mu, alpha)
+        print(objective)
 
         if np.abs(objective - former_objective) / former_objective < 1e-5:
             break
@@ -132,8 +135,8 @@ def post_processing(u, transport_map, sigma):
             point_feature = np.hstack([np.array([i / u.array.shape[0], j / u.array.shape[1]]), u.array[i, j]])
 
             # similarity of pixel (i, j) in the source image with each cluster
-            clusters_weight = np.exp(- np.linalg.norm(u.features - point_feature[np.newaxis, :], axis=1)
-                                     / (2 * sigma ** 2))
+            clusters_weight = np.exp(- 0.5 * np.linalg.norm(u.features - point_feature[np.newaxis, :], axis=1)
+                                     / sigma ** 2)
 
             w[i, j] = np.sum(clusters_weight[:, np.newaxis] * transport_map, axis=0) / np.sum(clusters_weight)
 
