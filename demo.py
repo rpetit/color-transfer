@@ -3,8 +3,8 @@ import warnings
 import time
 import matplotlib.pyplot as plt
 
-from image import Image
-from color_ot import color_transfer
+from tools.image import Image
+from tools.color_ot import color_transfer
 
 
 warnings.filterwarnings('ignore')

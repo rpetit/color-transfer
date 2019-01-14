@@ -90,7 +90,6 @@ def compute_transport_map(u, v, num_iter, tau, rho, mu, alpha, beta, num_neighbo
     assert(np.allclose(coupling_matrix_projection(P, u.hist), P))  # assert the projection behaves normally
 
     objective = compute_objective(u, v, C, P, rho, mu, alpha)
-    print(objective)
 
     former_P = P
     former_objective = objective
@@ -107,7 +106,6 @@ def compute_transport_map(u, v, num_iter, tau, rho, mu, alpha, beta, num_neighbo
         P = coupling_matrix_projection(P, u.hist)
 
         objective = compute_objective(u, v, C, P, rho, mu, alpha)
-        print(objective)
 
         if np.abs(objective - former_objective) / former_objective < 1e-5:
             break
