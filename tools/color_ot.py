@@ -13,7 +13,7 @@ def pseudo_simplex_projection(x, sum):
     x_sorted = np.sort(x)
 
     i = n - 2
-    t_i = (np.sum(x_sorted[i + 1:]) - sum) / (n - (i + 1))
+    t_i = (np.sum(x_sorted[i + 1:n]) - sum) / (n - (i + 1))
 
     while t_i < x_sorted[i] and i >= 0:
         i = i - 1
@@ -70,7 +70,7 @@ def compute_objective_grad(u, v, C, P, rho, mu, alpha):
     grad_F = np.ones((n, n)) @ P @ v.Dh  # fidelity term
 
     # regularization term
-    scaling = np.repeat(u.hist ** 2, n)[:, np.newaxis]
+    scaling = np.repeat(u.hist ** 2, n)[:, np.newaxis]  # scaling for the pseudo laplacian
     grad_R = u.Dh @ (u.G.T @ (scaling * (u.G @ V))) @ Y.T
 
     grad_D = np.ones(m) @ np.diag(Y @ Y.T).T - 2 * u.Dh_inv @ P @ Y @ Y.T  # dispersion term
@@ -91,7 +91,6 @@ def compute_transport_map(u, v, num_iter, tau, rho, mu, alpha, beta, num_neighbo
     assert(np.allclose(coupling_matrix_projection(P, u.hist), P))  # assert the projection behaves normally
 
     objective = compute_objective(u, v, C, P, rho, mu, alpha)
-    print(objective)
 
     former_P = P
     former_objective = objective
@@ -108,7 +107,6 @@ def compute_transport_map(u, v, num_iter, tau, rho, mu, alpha, beta, num_neighbo
         P = coupling_matrix_projection(P, u.hist)
 
         objective = compute_objective(u, v, C, P, rho, mu, alpha)
-        print(objective)
 
         if np.abs(objective - former_objective) / former_objective < 1e-5:
             break

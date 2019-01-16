@@ -117,8 +117,8 @@ class Image:
             ranked_neighbors = np.argsort(weights[i])[::-1]  # only keeps
 
             for j in range(num_neighbors):  # only keep top neighbors for computational efficiency
-                graph_grad[i, ranked_neighbors[j], i] = weights[i, j]
-                graph_grad[i, ranked_neighbors[j], j] = - weights[i, j]
+                graph_grad[i, ranked_neighbors[j], i] = weights[i, ranked_neighbors[j]]
+                graph_grad[i, ranked_neighbors[j], ranked_neighbors[j]] = - weights[i, ranked_neighbors[j]]
 
         graph_grad = np.reshape(graph_grad, (num_features ** 2, num_features))
         self.G = csr_matrix(graph_grad)
