@@ -9,6 +9,3 @@ Imaging project (MVA course) <br/>
 Rabin, J., & Papadakis, N. (2014). 
 Non-convex relaxation of optimal transport for color transfer. <br/> 
 NIPS Workshop on Optimal Transport for Machine Learning.
-
-## Authors <br/>
- Darius Afchar, Romain Petit
