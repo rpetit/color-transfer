@@ -1,6 +1,6 @@
 # Color transfer by optimal transport <br/>
 
-Imaging project (MVA course) <br/>
+Imaging school project <br/>
 
 ![alt text](https://github.com/RomainPe/color-transfer/blob/master/images/showcase.png "transfer showcase")
 
